@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Първо опитваме с локалния gradlew от Flutter SDK
+if [ -f "$SCRIPT_DIR/local.properties" ]; then
+    FLUTTER_SDK=$(grep "flutter.sdk" "$SCRIPT_DIR/local.properties" 2>/dev/null | cut -d'=' -f2 | tr -d ' ')
+fi
+
+if [ -n "$FLUTTER_SDK" ] && [ -f "$FLUTTER_SDK/packages/flutter_tools/gradle/gradlew" ]; then
+    exec bash "$FLUTTER_SDK/packages/flutter_tools/gradle/gradlew" "$@"
+fi
+
+# Ако не намери Flutter, пробваме стандартни локации
+for SDK in "/Users/builder/programs/flutter" "$HOME/flutter" "/opt/flutter"; do
+    if [ -f "$SDK/packages/flutter_tools/gradle/gradlew" ]; then
+        exec bash "$SDK/packages/flutter_tools/gradle/gradlew" "$@"
+    fi
+done
+
+# Последен опит - директно с gradle
+if command -v gradle &> /dev/null; then
+    cd "$SCRIPT_DIR"
+    exec gradle "$@"
+fi
+
+echo "Error: Cannot find Flutter SDK or Gradle"
+exit 1
