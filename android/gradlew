@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Търсим gradlew в Flutter SDK
+if [ -f "$PROJECT_DIR/local.properties" ]; then
+    FLUTTER_SDK=$(grep "flutter.sdk" "$PROJECT_DIR/local.properties" 2>/dev/null | cut -d'=' -f2)
+fi
+
+if [ -z "$FLUTTER_SDK" ] && [ -d "/Users/builder/programs/flutter" ]; then
+    FLUTTER_SDK="/Users/builder/programs/flutter"
+elif [ -z "$FLUTTER_SDK" ] && [ -d "$HOME/flutter" ]; then
+    FLUTTER_SDK="$HOME/flutter"
+fi
+
+GRADLEW="$FLUTTER_SDK/packages/flutter_tools/gradle/gradlew"
+
+if [ -f "$GRADLEW" ]; then
+    exec bash "$GRADLEW" "$@"
+else
+    echo "Error: Cannot find gradlew at $GRADLEW"
+    # Пробваме директно с gradle от системата
+    if command -v gradle &> /dev/null; then
+        cd "$SCRIPT_DIR"
+        exec gradle "$@"
+    else
+        echo "Error: No gradle found"
+        exit 1
+    fi
+fi
